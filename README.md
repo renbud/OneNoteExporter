@@ -1,7 +1,10 @@
 # Python project to export OneNote pages to Markdown files
-* Uses Microsoft Graph to authenticate
+* Uses Microsoft Graph
+* Authenticates with registered Azure application Id
 * Exports all sections of all notebooks
 * Creates a markdown file for each page in a folder structure that follows OneNote
+* Exports embedded pdfs docx and Excel files
+* Handles throttling by implementing a retry mechanism with exponential backoff.
 
 ```
 <root_output_folder>

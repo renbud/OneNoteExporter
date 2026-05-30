@@ -109,32 +109,49 @@ def export_all(root, token):
                 print("    Page:", pg["title"], "Modified:", modified_datetime)
                 html = get_page_html(pg, token)
                 md_text = html_to_markdown(html)
-                write_markdown(root, nb, sec, pg, md_text, modified_datetime)
-
-                # resources = get_page_resources(pg["id"], token)
-
-                # for res in resources:
-                #     if res.get("mimeType") == "application/pdf":
-                #         data = download_resource(res, token)
-                #         save_attachment(root, nb, sec, pg, res, data)
-
-                html = get_page_html(pg, token)
-                md_text = html_to_markdown(html)
 
                 attachments = extract_attachments_from_html(html)
 
                 attNo = 0
                 for att in attachments:
-                    if att["mime"] == "application/pdf":
-                        data = download_attachment(att["url"], token)
-                        filename = att["filename"]
-                        if filename == "attachment":
-                            filename = f"{filename}_{attNo}.pdf"
-                            attNo += 1
-                        save_attachment(root, nb, sec, pg, filename, data, modified_datetime)
+                    mime = att["mime"]
+                    url = att["url"]
 
+                    # Determine extension
+                    if mime == "application/pdf":
+                        ext = ".pdf"
+                    elif mime in (
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "application/vnd.ms-excel",
+                        "application/vnd.ms-excel.sheet.macroEnabled.12"
+                    ):
+                        ext = ".xlsx"
+                    elif mime in (
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        "application/msword"
+                    ):
+                        ext = ".docx"
+                    else:
+                        # Unsupported attachment type
+                        attNo += 1
+                        continue
 
+                    # Determine filename
+                    filename = att["filename"]
+                    if filename == "attachment":
+                        filename = f"attachment_{attNo}{ext}"
 
+                    attNo += 1
+
+                    # Download and save
+                    data = download_attachment(url, token)
+                    save_attachment(root, nb, sec, pg, filename, data, modified_datetime)
+
+                    # Append correct link
+                    md_text += f"\n\n[Attached file: {filename}]({filename})\n"
+
+                # Write markdown once all attachments are processed, so that the links are correct
+                write_markdown(root, nb, sec, pg, md_text, modified_datetime)
 
 if __name__ == "__main__":
     main()
