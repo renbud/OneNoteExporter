@@ -1,4 +1,5 @@
 """Main entry point for the OneNote Exporter application."""
+from datetime import datetime
 import logging
 from logging import config
 import msal
@@ -13,6 +14,7 @@ from onenote_extract import (
     download_attachment,
 )
 from markdown_save import html_to_markdown, write_markdown, save_attachment
+from pivot import load_pivot, save_pivot
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,7 +37,7 @@ The expected output structure is as follows:
 """
 
 def load_config():
-    """Load gmail_user, export_root, CLIENT_ID, and SCOPES from config.yaml."""
+    """Load export_root, CLIENT_ID, and SCOPES from config.yaml."""
     config_path = Path("config/config.yaml")
 
     try:
@@ -47,12 +49,11 @@ def load_config():
             logging.error("config.yaml is not a valid YAML mapping.")
             return None
 
-        if "gmail_user" not in config or "export_root" not in config or "CLIENT_ID" not in config:
-            logging.error("config.yaml must contain 'gmail_user', 'export_root' and 'CLIENT_ID'.")
+        if "export_root" not in config or "CLIENT_ID" not in config:
+            logging.error("config.yaml must contain 'export_root' and 'CLIENT_ID'.")
             return None
 
         app_config = {
-            "gmail_user": config["gmail_user"],
             "export_root": Path(config["export_root"]),
             "CLIENT_ID": config["CLIENT_ID"]
         }
@@ -114,8 +115,11 @@ def main():
     export_all(OUTPUT_FOLDER, token)
 
 def export_all(root, token):
+    pivot_ts = load_pivot()
+    
     notebooks = get_notebooks(token)
 
+    max_ts = pivot_ts
     for nb in notebooks:
         logger.info("Notebook: %s", nb["displayName"])
         sections = get_sections(nb["id"], token)
@@ -126,6 +130,18 @@ def export_all(root, token):
 
             for pg in pages:
                 modified_datetime = pg.get("lastModifiedDateTime")
+                if not modified_datetime:
+                    continue
+                    
+                dt = datetime.fromisoformat(modified_datetime.replace("Z", "+00:00"))
+                max_ts = max(max_ts, dt.timestamp())
+                
+                # Only export if page is new or modified since last run
+                if dt.timestamp() <= pivot_ts:
+                    logger.info("    Page skipped (unchanged): %s", pg["title"])
+                    continue
+                
+                logger.info("    Page exported: %s", pg["title"])
                 logger.info("    Page: %s Modified: %s", pg["title"], modified_datetime)
                 html = get_page_html(pg, token)
                 md_text = html_to_markdown(html)
@@ -172,6 +188,9 @@ def export_all(root, token):
 
                 # Write markdown once all attachments are processed, so that the links are correct
                 write_markdown(root, nb, sec, pg, md_text, modified_datetime)
+            
+    # Save the updated pivot timestamp
+    save_pivot(max_ts)
 
 if __name__ == "__main__":
     main()

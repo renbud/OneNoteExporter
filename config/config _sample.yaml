@@ -1,0 +1,5 @@
+export_root: C:\\OneNoteExportedFiles
+CLIENT_ID: "99999999-9999-9999-9999-999999999999"
+SCOPES:
+  - "Notes.Read"
+  - "Notes.Read.All"

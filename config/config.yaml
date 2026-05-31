@@ -1,5 +1,4 @@
-gmail_user: rmbuda@gmail.com
-export_root: D:\\GmailExportedFiles
+export_root: D:\\OneNoteExportedFiles
 CLIENT_ID: "558076f0-908d-4247-8334-97f229b74d97"
 SCOPES:
   - "Notes.Read"

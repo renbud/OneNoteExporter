@@ -1,0 +1,7 @@
+# Copy this file to config/config.yaml and customize it for your setup
+
+export_root: D:\\GmailExportedFiles  # Root folder for exported OneNote content
+CLIENT_ID: "your-azure-client-id-here"  # Azure Application client ID from app registration
+SCOPES:
+  - "Notes.Read"
+  - "Notes.Read.All"
