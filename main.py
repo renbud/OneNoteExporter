@@ -1,21 +1,23 @@
 """Main entry point for the OneNote Exporter application."""
+import logging
+from logging import config
 import msal
-import re
+import yaml
+from pathlib import Path
 from onenote_extract import (
-    download_resource,
     get_notebooks,
     get_sections,
     get_pages,
     get_page_html,
-    get_page_resources,
     extract_attachments_from_html,
     download_attachment,
 )
 from markdown_save import html_to_markdown, write_markdown, save_attachment
 
-OUTPUT_FOLDER = "D:\\OneNoteExportedFiles"
-CLIENT_ID = "558076f0-908d-4247-8334-97f229b74d97"
-SCOPES = ["Notes.Read", "Notes.Read.All"]   
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
 
 """
 The expected output structure is as follows:
@@ -32,81 +34,99 @@ The expected output structure is as follows:
 
 """
 
+def load_config():
+    """Load gmail_user, export_root, CLIENT_ID, and SCOPES from config.yaml."""
+    config_path = Path("config/config.yaml")
+
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        # Validate required keys
+        if not isinstance(config, dict):
+            logging.error("config.yaml is not a valid YAML mapping.")
+            return None
+
+        if "gmail_user" not in config or "export_root" not in config or "CLIENT_ID" not in config:
+            logging.error("config.yaml must contain 'gmail_user', 'export_root' and 'CLIENT_ID'.")
+            return None
+
+        app_config = {
+            "gmail_user": config["gmail_user"],
+            "export_root": Path(config["export_root"]),
+            "CLIENT_ID": config["CLIENT_ID"]
+        }
+
+        if "SCOPES" in config:
+            app_config["SCOPES"] = config["SCOPES"]
+
+        return app_config
+
+    except FileNotFoundError:
+        logging.error("config.yaml not found in current directory.")
+        return None
+
+    except yaml.YAMLError as e:
+        logging.critical(f"Error parsing config.yaml: {e}")
+        return None
+
+
 def main():
-    print("Hello from onenoteexporter!")
+    config = load_config()
+    if not config:
+        logger.critical("Failed to load configuration.")
+        exit(1)
 
-    # app = msal.PublicClientApplication(
-    #     client_id=CLIENT_ID,
-    #     authority=f"https://login.microsoftonline.com/common"
-    # )
-
-    # app = msal.PublicClientApplication(
-    #     client_id=CLIENT_ID,
-    #     authority=f"https://login.microsoftonline.com/{TENANT_ID}"
-    # )
+    OUTPUT_FOLDER = config["export_root"]
 
     app = msal.PublicClientApplication(
-        client_id=CLIENT_ID,
+        client_id=config["CLIENT_ID"],
         authority="https://login.microsoftonline.com/consumers"
     )
+
+    SCOPES = config.get("SCOPES", ["Notes.Read", "Notes.Read.All"])
 
 
     flow = app.initiate_device_flow(scopes=SCOPES)
 
     if "user_code" not in flow:
-        print("Device flow initiation failed:")
-        print(flow)
+        logger.error("Device flow initiation failed:")
+        logger.error(flow)
         return
 
-    print("FLOW:", flow)
+    logger.info("FLOW: %s", flow)
 
     # Be careful with this link. It can depend on the app type you have set up in Azure AD.
     # For a multi-tenant app, the link is https://microsoft.com/devicelogin.
     # For a single-tenant app, it might be https://microsoft.com/devicelogin?tenant=YOUR_TENANT_ID
     # For consumer apps, it should be https://www.microsoft.com/link.
-    print("Go to https://www.microsoft.com/link and enter this code:")
-    print(flow["user_code"])
+    logger.info("Go to https://www.microsoft.com/link and enter this code:")
+    logger.info(flow["user_code"])
 
     result = app.acquire_token_by_device_flow(flow)
 
     if "access_token" not in result:
-        print("Authentication failed:")
-        print(result)
+        logger.error("Authentication failed:")
+        logger.error(result)
         return
 
     token = result["access_token"]
     export_all(OUTPUT_FOLDER, token)
 
-    # notebooks = get_notebooks(token)
-
-    # for nb in notebooks:
-    #     print(f"DisplayName: {nb['displayName']}")
-    #     print("Notebook ID:", nb["id"])
-    #     print(nb["links"]["oneNoteWebUrl"]["href"])
-    #     sections = get_sections(nb["id"], token)
-    #     for sec in sections:
-    #         print(f"  Section: {sec['displayName']}")
-    #         print("  Section ID:", sec["id"])
-    #         pages = get_pages(sec["id"], token)
-    #         for pg in pages:
-    #             print(f"    Page: {pg['title']}")
-    #             print("    Page ID:", pg["id"])
-
-
 def export_all(root, token):
     notebooks = get_notebooks(token)
 
     for nb in notebooks:
-        print("Notebook:", nb["displayName"])
+        logger.info("Notebook: %s", nb["displayName"])
         sections = get_sections(nb["id"], token)
 
         for sec in sections:
-            print("  Section:", sec["displayName"])
+            logger.info("  Section: %s", sec["displayName"])
             pages = get_pages(sec["id"], token)
 
             for pg in pages:
                 modified_datetime = pg.get("lastModifiedDateTime")
-                print("    Page:", pg["title"], "Modified:", modified_datetime)
+                logger.info("    Page: %s Modified: %s", pg["title"], modified_datetime)
                 html = get_page_html(pg, token)
                 md_text = html_to_markdown(html)
 

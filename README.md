@@ -19,6 +19,13 @@
             Page1.md
 ```
 
+## Setup
+### Install all dependencies
+ uv sync
+ 
+### Run the project
+ uv run python main.py
+
 ## How to register the app in Azure
 This is the hardest part of this whole thing.
 With my personal microsoft account - I set up a tenant in Azure

@@ -1,6 +1,10 @@
+import logging
 import requests
 from bs4 import BeautifulSoup
 import time
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 
@@ -23,7 +27,7 @@ def graph_get(url, token, max_retries=7):
         else:
             wait = 2 ** attempt  # exponential fallback
 
-        print(f"Throttled. Waiting {wait} seconds…")
+        logger.info(f"Throttled. Waiting {wait} seconds…")
         time.sleep(wait)
 
     r.raise_for_status()
@@ -68,7 +72,7 @@ def extract_attachments_from_html(html):
         filename = obj.get("data-fullpath") or "attachment"
 
         if url and mime:
-            print("Found attachment in HTML:", filename, mime, url)
+            logger.info(f"Found attachment in HTML: {filename} ({mime}) at {url}")
             attachments.append({
                 "url": url,
                 "mime": mime,

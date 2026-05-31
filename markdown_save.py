@@ -1,7 +1,11 @@
 from datetime import datetime
 from markdownify import markdownify as md
+import logging
 import os
 import re
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def safe_name(name):
@@ -38,7 +42,8 @@ def write_markdown(root, notebook, section, page, markdown, modified_datetime):
     # Set both access and modification time
     os.utime(path, (epoch, epoch))
 
-    print("Wrote:", path)
+    logger.info(f"Wrote: {path}")
+
 
 def save_attachment(root, notebook, section, page, filename, data, modified_datetime):
     nb = safe_name(notebook["displayName"])
@@ -63,4 +68,4 @@ def save_attachment(root, notebook, section, page, filename, data, modified_date
     # Set both access and modification time
     os.utime(path, (epoch, epoch))
 
-    print("Saved attachment:", path)
+    logger.info(f"Saved attachment: {path}")
