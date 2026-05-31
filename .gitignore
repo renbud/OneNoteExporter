@@ -11,4 +11,4 @@ wheels/
 
 # Configuration files (local settings)
 config/config.yaml
-config/config.yaml
+pivot.json
