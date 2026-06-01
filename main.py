@@ -200,10 +200,10 @@ def export_all(root, token):
 
                     # Download and save
                     data = download_attachment(url, token)
-                    save_attachment(root, nb, sec, pg, filename, data, modified_datetime)
+                    attachment_path = save_attachment(root, nb, sec, pg, filename, data, modified_datetime)
 
                     # Append correct link
-                    md_text += f"\n\n[Attached file: {filename}]({filename})\n"
+                    md_text += f"\n\n[Attached file: {filename}]({attachment_path})\n"
 
                 # Write markdown once all attachments are processed, so that the links are correct
                 write_markdown(root, nb, sec, pg, md_text, modified_datetime)

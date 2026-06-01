@@ -69,3 +69,4 @@ def save_attachment(root, notebook, section, page, filename, data, modified_date
     os.utime(path, (epoch, epoch))
 
     logger.info(f"Saved attachment: {path}")
+    return path
