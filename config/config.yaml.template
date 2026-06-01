@@ -5,3 +5,5 @@ CLIENT_ID: "your-azure-client-id-here"  # Azure Application client ID from app r
 SCOPES:
   - "Notes.Read"
   - "Notes.Read.All"
+
+log_level: INFO  # Options: DEBUG, INFO, WARNING, ERROR

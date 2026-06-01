@@ -16,10 +16,25 @@ from onenote_extract import (
 from markdown_save import html_to_markdown, write_markdown, save_attachment
 from pivot import load_pivot, save_pivot
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
+# Configure logging
+def setup_logging(log_level="INFO"):
+    """Set up logging configuration from config or default."""
+    log_format = "%(asctime)s - %(levelname)s - %(message)s"
+    
+    if log_level == "DEBUG":
+        level = logging.DEBUG
+    elif log_level == "WARNING":
+        level = logging.WARNING
+    elif log_level == "ERROR":
+        level = logging.ERROR
+    else:
+        level = logging.INFO
+    
+    logging.basicConfig(
+        level=level,
+        format=log_format,
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
 """
 The expected output structure is as follows:
@@ -61,6 +76,10 @@ def load_config():
         if "SCOPES" in config:
             app_config["SCOPES"] = config["SCOPES"]
 
+        # Load log_level from config
+        log_level = config.get("log_level", "INFO")
+        setup_logging(log_level)
+
         return app_config
 
     except FileNotFoundError:
@@ -75,7 +94,7 @@ def load_config():
 def main():
     config = load_config()
     if not config:
-        logger.critical("Failed to load configuration.")
+        logging.critical("Failed to load configuration.")
         exit(1)
 
     OUTPUT_FOLDER = config["export_root"]
@@ -91,24 +110,24 @@ def main():
     flow = app.initiate_device_flow(scopes=SCOPES)
 
     if "user_code" not in flow:
-        logger.error("Device flow initiation failed:")
-        logger.error(flow)
+        logging.error("Device flow initiation failed:")
+        logging.error(flow)
         return
 
-    logger.info("FLOW: %s", flow)
+    logging.info("FLOW: %s", flow)
 
     # Be careful with this link. It can depend on the app type you have set up in Azure AD.
     # For a multi-tenant app, the link is https://microsoft.com/devicelogin.
     # For a single-tenant app, it might be https://microsoft.com/devicelogin?tenant=YOUR_TENANT_ID
     # For consumer apps, it should be https://www.microsoft.com/link.
-    logger.info("Go to https://www.microsoft.com/link and enter this code:")
-    logger.info(flow["user_code"])
+    logging.info("Go to https://www.microsoft.com/link and enter this code:")
+    logging.info(flow["user_code"])
 
     result = app.acquire_token_by_device_flow(flow)
 
     if "access_token" not in result:
-        logger.error("Authentication failed:")
-        logger.error(result)
+        logging.error("Authentication failed:")
+        logging.error(result)
         return
 
     token = result["access_token"]
@@ -121,11 +140,11 @@ def export_all(root, token):
 
     max_ts = pivot_ts
     for nb in notebooks:
-        logger.info("Notebook: %s", nb["displayName"])
+        logging.info("Notebook: %s", nb["displayName"])
         sections = get_sections(nb["id"], token)
 
         for sec in sections:
-            logger.info("  Section: %s", sec["displayName"])
+            logging.info("  Section: %s", sec["displayName"])
             pages = get_pages(sec["id"], token)
 
             for pg in pages:
@@ -138,11 +157,11 @@ def export_all(root, token):
                 
                 # Only export if page is new or modified since last run
                 if dt.timestamp() <= pivot_ts:
-                    logger.info("    Page skipped (unchanged): %s", pg["title"])
+                    logging.info("    Page skipped (unchanged): %s", pg["title"])
                     continue
                 
-                logger.info("    Page exported: %s", pg["title"])
-                logger.info("    Page: %s Modified: %s", pg["title"], modified_datetime)
+                logging.info("    Page exported: %s", pg["title"])
+                logging.info("    Page: %s Modified: %s", pg["title"], modified_datetime)
                 html = get_page_html(pg, token)
                 md_text = html_to_markdown(html)
 
